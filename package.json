@@ -1,6 +1,6 @@
 {
   "name": "catan-analyzer",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Real-time Catan Universe game analyzer with overlay",
   "main": "dist/main/main.js",
   "scripts": {
@@ -60,7 +60,9 @@
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico"
