@@ -1,6 +1,6 @@
 {
   "name": "catan-analyzer",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Real-time Catan Universe game analyzer with overlay",
   "main": "dist/main/main.js",
   "scripts": {
