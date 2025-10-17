@@ -3,6 +3,7 @@ import { BoardState, Strategy, PositionAnalysis, ResourceType } from '../types/c
 import { strategyEngine } from '../utils/strategyEngine';
 import { boardAnalyzer } from '../services/boardAnalyzer';
 import { mockBoardService } from '../services/mockBoardService';
+import { realBoardDetector } from '../services/realBoardDetector';
 import './App.css';
 
 const App: React.FC = () => {
@@ -12,8 +13,10 @@ const App: React.FC = () => {
   const [topPositions, setTopPositions] = useState<PositionAnalysis[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [useMockData] = useState(true); // Toggle for development
+  const [useMockData, setUseMockData] = useState(false); // ← Changed to false (use real data)
   const [error, setError] = useState<string | null>(null);
+  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [showCalibration, setShowCalibration] = useState(false);
 
   // Check if electronAPI is available
   useEffect(() => {
@@ -25,6 +28,7 @@ const App: React.FC = () => {
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
+    setError(null);
 
     try {
       let boardState: BoardState;
@@ -34,17 +38,20 @@ const App: React.FC = () => {
         boardState = mockBoardService.generateStandardBoard();
         console.log('Using mock board data');
       } else {
-        // Capture screenshot and process with OCR
-        const screenshot = await window.electronAPI.captureScreenshot();
-        console.log('Screenshot captured');
+        // Capture screenshot and process with real detection
+        console.log('Capturing screenshot...');
+        const screenshotData = await window.electronAPI.captureScreenshot();
+        setScreenshot(screenshotData); // Store for calibration view
 
-        // TODO: Process screenshot with OCR here
-        // const numbers = await ocrService.recognizeNumbers(screenshot);
-        // const resources = await detectResources(screenshot);
-        // boardState = buildBoardState(numbers, resources);
+        console.log('Processing screenshot with real detector...');
+        boardState = await realBoardDetector.detectBoard(screenshotData);
 
-        // Fallback to mock for now
-        boardState = mockBoardService.generateStandardBoard();
+        console.log('Board detected:', {
+          tiles: boardState.tiles.length,
+          sample: boardState.tiles.slice(0, 3),
+        });
+
+        setError(`✅ Detected ${boardState.tiles.length} tiles`);
       }
 
       // Analyze positions
@@ -57,9 +64,17 @@ const App: React.FC = () => {
 
     } catch (error) {
       console.error('Analysis failed:', error);
+      setError(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const toggleMode = () => {
+    setUseMockData(!useMockData);
+    setStrategies([]);
+    setTopPositions([]);
+    setScreenshot(null);
   };
 
   const toggleVisibility = () => {
@@ -141,9 +156,53 @@ const App: React.FC = () => {
       </div>
 
       <div className="content">
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
+          <button
+            onClick={toggleMode}
+            style={{
+              padding: '6px 12px',
+              background: useMockData ? '#6366f1' : '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '11px',
+              cursor: 'pointer',
+              fontWeight: '600',
+            }}
+            title={useMockData ? 'Using mock data (click to use real detection)' : 'Using real detection (click to use mock data)'}
+          >
+            {useMockData ? '🧪 Mock Mode' : '📸 Real Mode'}
+          </button>
+
+          {screenshot && (
+            <button
+              onClick={() => setShowCalibration(!showCalibration)}
+              style={{
+                padding: '6px 12px',
+                background: '#8b5cf6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: '600',
+              }}
+            >
+              {showCalibration ? '📊 Results' : '🔍 Calibration'}
+            </button>
+          )}
+        </div>
+
         {error && (
-          <div style={{ padding: '10px', background: '#fbbf24', color: '#000', borderRadius: '8px', marginBottom: '10px', fontSize: '12px' }}>
-            ⚠️ {error}
+          <div style={{
+            padding: '10px',
+            background: error.startsWith('✅') ? '#10b981' : '#fbbf24',
+            color: '#fff',
+            borderRadius: '8px',
+            marginBottom: '10px',
+            fontSize: '12px'
+          }}>
+            {error}
           </div>
         )}
 
@@ -152,8 +211,32 @@ const App: React.FC = () => {
           disabled={isAnalyzing}
           className="analyze-button"
         >
-          {isAnalyzing ? 'Analyzing...' : '🎲 Analyze Board'}
+          {isAnalyzing ? 'Analyzing...' : `🎲 Analyze Board ${useMockData ? '(Mock)' : '(Real)'}`}
         </button>
+
+        {showCalibration && screenshot && (
+          <div style={{
+            marginTop: '12px',
+            padding: '12px',
+            background: 'rgba(30, 41, 59, 0.6)',
+            borderRadius: '8px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}>
+            <h4 style={{ fontSize: '13px', marginBottom: '8px', color: '#fbbf24' }}>📸 Screenshot Preview</h4>
+            <img
+              src={`data:image/png;base64,${screenshot}`}
+              alt="Screenshot"
+              style={{
+                width: '100%',
+                borderRadius: '6px',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+              }}
+            />
+            <p style={{ fontSize: '11px', marginTop: '8px', color: 'rgba(255, 255, 255, 0.6)' }}>
+              Use this to verify tiles are detected correctly. If positions are wrong, calibration is needed.
+            </p>
+          </div>
+        )}
 
         {topPositions.length > 0 && (
           <div className="section">
