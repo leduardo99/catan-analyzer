@@ -1,0 +1,80 @@
+{
+  "name": "catan-analyzer",
+  "version": "1.0.0",
+  "description": "Real-time Catan Universe game analyzer with overlay",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "start": "npm run build:electron && concurrently \"npm run start:renderer\" \"npm run watch:electron\" \"npm run start:electron\"",
+    "start:renderer": "vite",
+    "start:electron": "wait-on http://localhost:5173 && nodemon --watch dist/main --exec electron .",
+    "watch:electron": "tsc -p tsconfig.electron.json --watch",
+    "build": "npm run build:renderer && npm run build:electron",
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "dist": "npm run build && electron-builder --win --publish never"
+  },
+  "keywords": [
+    "catan",
+    "analyzer",
+    "overlay",
+    "ocr"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "nodemon": "^3.1.10",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "screenshot-desktop": "^1.15.0",
+    "sharp": "^0.33.1",
+    "tesseract.js": "^5.0.4"
+  },
+  "build": {
+    "appId": "com.catananalyzer.app",
+    "productName": "Catan Analyzer",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "CatanAnalyzer-${version}-portable.exe"
+    }
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild",
+      "sharp",
+      "tesseract.js"
+    ]
+  }
+}
